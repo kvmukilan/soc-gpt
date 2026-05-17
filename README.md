@@ -1,6 +1,8 @@
 # SOC-GPT — AI-Augmented SOC Triage Console
 
-A portfolio-quality security tool that combines Sigma detection rules, Elasticsearch log search, MITRE ATT&CK mapping, and a local LLM (Ollama/llama3.2:3b) to produce analyst-ready triage reports — all orchestrated by a LangGraph agent with a live-streaming Streamlit UI.
+LangGraph agent that ingests Sigma detection rules, queries Elasticsearch for matching auditd/syslog events, maps findings to MITRE ATT&CK, scores false-positive likelihood, and synthesises analyst-ready Markdown triage reports. Live-streaming Streamlit UI shows each agent step as it runs.
+
+> **Ollama is optional.** If the LLM is not running, the app falls back to a structured Markdown template automatically — no configuration needed.
 
 ---
 
@@ -13,113 +15,124 @@ A portfolio-quality security tool that combines Sigma detection rules, Elasticse
 │  │   Home   │  │ Sigma Rules │  │Log Ingestor │  │  Triage │  │
 │  └──────────┘  └─────────────┘  └─────────────┘  └─────────┘  │
 └──────────────────────────┬──────────────────────────────────────┘
-                           │ streams agent steps live
+                           │ streams steps live
 ┌──────────────────────────▼──────────────────────────────────────┐
-│                    LangGraph Agent                              │
+│                      LangGraph Agent                            │
 │                                                                 │
 │  parse_sigma_rules ──► query_elasticsearch                      │
 │                              │                                  │
 │                    ┌─────────▼──────────┐                       │
 │                    │   has matches?     │                       │
 │                    └──┬─────────────┬───┘                       │
-│                  yes  │             │ no                        │
-│          ┌────────────▼──┐    ┌─────▼──────────┐               │
-│          │map_attack_    │    │no_matches_     │               │
-│          │techniques     │    │report          │               │
-│          └────────────┬──┘    └────────────────┘               │
-│          ┌────────────▼──┐                                      │
-│          │score_false_   │                                      │
-│          │positives      │                                      │
-│          └────────────┬──┘                                      │
-│          ┌────────────▼──┐                                      │
-│          │generate_      │                                      │
-│          │triage_report  │ ◄── Ollama llama3.2:3b               │
-│          └───────────────┘                                      │
+│                  yes  │             │  no                       │
+│         ┌─────────────▼──┐   ┌──────▼─────────────┐            │
+│         │ map_attack_    │   │ no_matches_report  │            │
+│         │ techniques     │   └────────────────────┘            │
+│         └─────────────┬──┘                                      │
+│         ┌─────────────▼──┐                                      │
+│         │ score_false_   │                                      │
+│         │ positives      │                                      │
+│         └─────────────┬──┘                                      │
+│         ┌─────────────▼──┐                                      │
+│         │ generate_      │ ◄── Ollama llama3.2 (optional)       │
+│         │ triage_report  │     falls back to template if absent │
+│         └────────────────┘                                      │
 └─────────────────────────────────────────────────────────────────┘
-         │                                    │
-┌────────▼──────────┐              ┌──────────▼──────────┐
-│   Elasticsearch   │              │  MITRE ATT&CK DB    │
-│   (auditd logs)   │              │  (embedded subset)  │
-└───────────────────┘              └─────────────────────┘
+        │                                     │
+┌───────▼───────────┐               ┌─────────▼──────────┐
+│  Elasticsearch    │               │  MITRE ATT&CK DB   │
+│  (auditd logs)    │               │  (embedded subset) │
+└───────────────────┘               └────────────────────┘
 ```
 
 ---
 
 ## Tech Stack
 
-| Component          | Technology                          | Purpose                              |
-|--------------------|-------------------------------------|--------------------------------------|
-| Orchestration      | LangGraph 0.2+                      | Agent state machine with streaming   |
-| Detection Rules    | Sigma YAML + pySigma                | Rule ingestion and ES DSL conversion |
-| Log Store          | Elasticsearch 8.13                  | Auditd/syslog event storage & search |
-| ATT&CK Mapping     | Embedded MITRE DB + mitreattack-python | Technique enrichment               |
-| LLM               | Ollama (llama3.2:3b)                | Analyst-ready triage report synthesis|
-| UI                 | Streamlit 1.35+                     | Live-streaming multi-page dashboard  |
-| Config             | pydantic-settings                   | .env-based configuration             |
-| Testing            | pytest + unittest.mock              | Unit + integration tests             |
-| Infrastructure     | Docker Compose                      | Elasticsearch, Kibana, Ollama        |
+| Component       | Technology                   | Purpose                                    |
+|-----------------|------------------------------|--------------------------------------------|
+| Orchestration   | LangGraph 0.2+               | Agent state machine with live streaming    |
+| Detection Rules | Sigma YAML + pySigma         | Rule parsing and ES DSL conversion         |
+| Log Store       | Elasticsearch 8.13           | Auditd/syslog event storage and search     |
+| ATT&CK Mapping  | Embedded MITRE DB            | Technique enrichment per rule              |
+| LLM             | Ollama llama3.2:3b (optional)| Analyst triage report synthesis            |
+| UI              | Streamlit 1.35+              | Live-streaming 4-page dashboard            |
+| Config          | pydantic-settings            | `.env`-based configuration                 |
+| Infrastructure  | Docker Desktop               | Runs Elasticsearch + Kibana (+ Ollama)     |
 
 ---
 
-## Prerequisites
+## Prerequisites (Windows)
 
-- Python 3.10+
-- Docker Desktop (for Elasticsearch, Kibana, Ollama)
-- `make` (optional, for convenience commands)
-- ~4 GB RAM for Elasticsearch + Ollama
+| Requirement | Notes |
+|-------------|-------|
+| Python 3.10+ | [python.org](https://www.python.org/downloads/) — tick "Add to PATH" during install |
+| Docker Desktop | [docs.docker.com/desktop/install/windows](https://docs.docker.com/desktop/install/windows/) — required for Elasticsearch |
+| Ollama (optional) | [ollama.com/download](https://ollama.com/download) — if you want LLM-powered reports |
+| Git | [git-scm.com](https://git-scm.com) |
 
 ---
 
-## Setup
+## Setup (Windows)
 
-### 1. Clone and enter the project
+### 1. Clone the repo
 
-```bash
-cd /Users/karmukilan/soc-gpt
+```bat
+git clone https://github.com/kvmukilan/soc-gpt.git
+cd soc-gpt
 ```
 
-### 2. Copy environment config
+### 2. Create virtual environment and install dependencies
 
-```bash
-cp .env.example .env
-# Edit .env if your ports differ from defaults
-```
-
-### 3. Start infrastructure
-
-```bash
-make up
-# or: docker compose up -d
-```
-
-Wait ~30 seconds for Elasticsearch to become healthy.
-
-### 4. Pull the LLM model
-
-```bash
-make pull-model
-# or: docker compose exec ollama ollama pull llama3.2:3b
-```
-
-This downloads ~2 GB. Do this once.
-
-### 5. Install Python dependencies
-
-```bash
+```bat
 python -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
-make install
-# or: pip install -r requirements-dev.txt
+.venv\Scripts\activate
+pip install -r requirements.txt
 ```
+
+### 3. Copy environment config
+
+```bat
+copy .env.example .env
+```
+
+Edit `.env` only if your ports differ from the defaults (they won't need changing for a fresh install).
+
+### 4. Start Elasticsearch
+
+Make sure Docker Desktop is running, then:
+
+```bat
+docker compose up -d elasticsearch
+```
+
+Wait ~30 seconds. Verify it's healthy:
+
+```bat
+curl http://localhost:9200
+```
+
+You should see a JSON response with `"status" : "green"` or `"yellow"`.
+
+> **Kibana is optional.** It's in `docker-compose.yml` if you want a UI for the raw logs, but SOC-GPT doesn't need it.
+
+### 5. (Optional) Start Ollama and pull the model
+
+If you have Ollama installed on Windows:
+
+```bat
+ollama pull llama3.2:3b
+```
+
+This downloads ~2 GB once. If you skip this step, the app uses a structured Markdown template instead — all features still work.
 
 ### 6. Launch the UI
 
-```bash
-make run-ui
-# or: streamlit run soc_gpt/ui/app.py
+```bat
+streamlit run soc_gpt/ui/app.py
 ```
 
-Open http://localhost:8501 in your browser.
+Open **http://localhost:8501** in your browser.
 
 ---
 
@@ -127,49 +140,61 @@ Open http://localhost:8501 in your browser.
 
 ### Step 1 — Ingest Sample Logs
 
-1. Navigate to **Log Ingestor** in the sidebar
+1. Go to **Log Ingestor** in the sidebar
 2. Click **"Load Sample Auditd Logs"**
-3. Verify the event count increases (50 synthetic auditd events are indexed)
+3. Verify the event count shows **50 events indexed**
+
+The sample set contains synthetic Linux auditd events including sudo privilege escalation, reverse shell attempts, crontab modifications, and `/etc/passwd` reads — mixed with benign activity.
 
 ### Step 2 — Load Detection Rules
 
-1. Navigate to **Sigma Rules**
-2. Click **"Load Sample Rules"** to load the 4 bundled rules:
-   - Linux Sudo Privilege Escalation (T1548.003)
-   - Linux Reverse Shell via Netcat or Bash (T1059.004)
-   - Linux Crontab Persistence Mechanism (T1053.003)
-   - Linux Sensitive File Access - Passwd Shadow (T1003.008)
-3. Expand any rule to see its raw YAML and generated Elasticsearch DSL query
+1. Go to **Sigma Rules**
+2. Click **"Load Sample Rules"** — loads the 4 bundled rules:
+
+| Rule | ATT&CK Technique |
+|------|-----------------|
+| Linux Sudo Privilege Escalation | T1548.003 |
+| Linux Reverse Shell via Netcat or Bash | T1059.004 |
+| Linux Crontab Persistence | T1053.003 |
+| Linux Sensitive File Access (passwd/shadow) | T1003.008 |
+
+3. Expand any rule to see its **raw Sigma YAML** and the **generated Elasticsearch DSL query**
+
+You can also drag-and-drop your own `.yml` Sigma rule files.
 
 ### Step 3 — Run Triage
 
-1. Navigate to **Run Triage**
+1. Go to **Run Triage**
 2. Select which rules to run (all 4 selected by default)
-3. Click **"▶ Run Triage"**
-4. Watch the agent work through each step live:
-   - Parse Sigma rules → ES DSL
-   - Query Elasticsearch
-   - Map MITRE ATT&CK techniques
-   - Score false-positive likelihood
-   - Generate triage report (Ollama)
-5. Review per-rule summary cards with FP scores, match counts, and ATT&CK links
-6. Read the full Markdown analyst report
+3. Click **▶ Run Triage**
+4. Watch each agent step stream live:
+   - Parsing Sigma rules → ES DSL
+   - Querying Elasticsearch
+   - Mapping MITRE ATT&CK techniques
+   - Scoring false-positive likelihood
+   - Generating triage report
+5. Review per-rule cards: **FP score**, **match count**, **ATT&CK technique links**
+6. Read the full Markdown analyst report at the bottom
 7. Check off recommended SOC actions
-
-### Step 4 — Upload Custom Rules
-
-On the **Sigma Rules** page, drag-and-drop your own `.yml` Sigma rule files. The agent will automatically convert them to ES DSL.
 
 ---
 
-## Running Tests
+## False-Positive Scoring
 
-```bash
-make test
-# or: pytest tests/ -v
+Score is **0–10** where **0 = almost certainly a true positive**, **10 = likely false positive**.
+
+```
+score = base(level) + delta(status) + volume_delta(hit_count) + time_delta(hour)
 ```
 
-Tests use mocked Elasticsearch and Ollama — no running infrastructure required.
+| Factor | Values |
+|--------|--------|
+| `base(level)` | critical=1.0 · high=2.5 · medium=5.0 · low=7.5 · info=9.0 |
+| `delta(status)` | stable=−1.0 · test=0.0 · experimental=+2.0 |
+| `volume_delta` | 1–5 hits: 0.0 · 6–50 hits: +1.0 · 50+ hits: +3.0 |
+| `time_delta` | Business hours 08:00–18:00: +0.5 · off-hours: 0.0 |
+
+Labels: **≤ 3.0** → Likely True Positive · **3–6** → Uncertain · **> 6** → Likely False Positive
 
 ---
 
@@ -178,65 +203,52 @@ Tests use mocked Elasticsearch and Ollama — no running infrastructure required
 ```
 soc-gpt/
 ├── data/
-│   ├── sigma_rules/          # Bundled Sigma YAML rules (4 rules)
-│   └── sample_logs/          # Synthetic auditd events (50 events)
+│   ├── sigma_rules/          # 4 bundled Linux/auditd Sigma YAML rules
+│   └── sample_logs/          # 50 synthetic auditd events (JSON)
 ├── soc_gpt/
 │   ├── config.py             # pydantic-settings env config
-│   ├── es_client.py          # Elasticsearch client wrapper
-│   ├── sigma_ingestor.py     # Sigma YAML parsing + ES DSL conversion
-│   ├── attack_mapper.py      # MITRE ATT&CK technique lookup
+│   ├── es_client.py          # Elasticsearch client (bulk ingest, search, ping)
+│   ├── sigma_ingestor.py     # Sigma YAML parsing + ES DSL query generation
+│   ├── attack_mapper.py      # MITRE ATT&CK technique lookup (embedded DB)
 │   ├── fp_scorer.py          # False-positive scoring formula
-│   ├── llm_client.py         # Ollama client with template fallback
-│   ├── report_generator.py   # Prompt builder + report orchestration
+│   ├── llm_client.py         # Ollama client with Markdown template fallback
+│   ├── report_generator.py   # Prompt builder + LLM orchestration
 │   ├── agent/
-│   │   ├── state.py          # LangGraph TypedDict state schema
-│   │   ├── nodes.py          # Agent node functions
+│   │   ├── state.py          # TriageState TypedDict schema
+│   │   ├── nodes.py          # LangGraph node functions (one per pipeline step)
 │   │   └── graph.py          # StateGraph wiring + conditional edges
 │   └── ui/
 │       └── app.py            # Streamlit 4-page application
-├── tests/
-│   ├── test_sigma_ingestor.py
-│   ├── test_attack_mapper.py
-│   ├── test_fp_scorer.py
-│   └── test_agent.py
-├── docker-compose.yml        # ES 8.13 + Kibana + Ollama
-├── Makefile                  # Convenience targets
+├── docker-compose.yml        # Elasticsearch 8.13 + Kibana + Ollama
+├── Makefile                  # Convenience targets (Windows: use commands directly)
 ├── pyproject.toml
 ├── requirements.txt
-├── requirements-dev.txt
 └── .env.example
 ```
 
 ---
 
-## False-Positive Scoring Formula
+## Stopping Services
 
-The FP score (0–10, higher = more likely FP) is computed as:
-
+```bat
+docker compose down
 ```
-score = base(level) + delta(status) + volume_delta(hit_count) + time_delta(hour)
-```
-
-| Component      | Value                                                    |
-|----------------|----------------------------------------------------------|
-| `base(level)`  | critical=1.0, high=2.5, medium=5.0, low=7.5, info=9.0   |
-| `delta(status)`| stable=-1.0, test=0.0, experimental=+2.0, deprecated=+3.0|
-| `volume_delta` | 0–5 hits: 0.0 / 6–50 hits: +1.0 / 50+ hits: +3.0       |
-| `time_delta`   | Business hours (08:00–18:00): +0.5 / off-hours: 0.0    |
-
-Score interpretation: ≤3.0 → Likely True Positive / 3–6 → Uncertain / >6 → Likely False Positive
 
 ---
 
-## Stopping Services
+## Environment Variables
 
-```bash
-make down
-# or: docker compose down
-```
+All in `.env` (copy from `.env.example`):
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ES_URL` | `http://localhost:9200` | Elasticsearch URL |
+| `ES_INDEX` | `soc-gpt-logs` | Index name for ingested logs |
+| `OLLAMA_URL` | `http://localhost:11434` | Ollama server URL |
+| `OLLAMA_MODEL` | `llama3.2:3b` | Model to use for report generation |
 
 ---
 
 ## License
 
-MIT — built for portfolio demonstration. Sigma rules included are for educational use.
+MIT — built for portfolio and educational demonstration.
