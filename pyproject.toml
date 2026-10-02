@@ -6,15 +6,13 @@ build-backend = "setuptools.build_meta"
 name = "soc-gpt"
 version = "0.1.0"
 description = "AI-Augmented SOC Triage Console"
+license = {text = "MIT"}
 requires-python = ">=3.10"
 dependencies = [
-    "pySigma>=0.10,<1.0",
-    "pySigma-backend-elasticsearch>=1.1,<2.0",
     "elasticsearch>=8.0,<9.0",
     "langgraph>=0.2,<1.0",
     "langchain-core>=0.2,<1.0",
     "ollama>=0.3,<1.0",
-    "mitreattack-python>=3.0,<4.0",
     "streamlit>=1.35,<2.0",
     "pyyaml>=6.0,<7.0",
     "pydantic>=2.0,<3.0",
