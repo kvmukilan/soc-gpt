@@ -1,8 +1,31 @@
 # SOC-GPT — AI-Augmented SOC Triage Console
 
-LangGraph agent that ingests Sigma detection rules, queries Elasticsearch for matching auditd/syslog events, maps findings to MITRE ATT&CK, scores false-positive likelihood, and synthesises analyst-ready Markdown triage reports. Live-streaming Streamlit UI shows each agent step as it runs.
+[![CI](https://github.com/kvmukilan/soc-gpt/actions/workflows/ci.yml/badge.svg)](https://github.com/kvmukilan/soc-gpt/actions/workflows/ci.yml)
 
-> **Ollama is optional.** If the LLM is not running, the app falls back to a structured Markdown template automatically — no configuration needed.
+A LangGraph agent that ingests Sigma detection rules, queries Elasticsearch for matching auditd/syslog events, maps findings to MITRE ATT&CK, scores false-positive likelihood, and synthesises analyst-ready Markdown triage reports — streamed step-by-step in a Streamlit UI.
+
+> **Runs offline.** The agent and every analysis step (Sigma → ES DSL conversion, ATT&CK mapping, FP scoring, report generation) run with no network and no secrets. **Ollama is optional** — if the LLM is not running, report synthesis falls back to a structured Markdown template automatically. **Elasticsearch** is only needed to serve logs to the live Streamlit UI; the [Quickstart](#quickstart-no-elasticsearch-no-ollama) runs the whole pipeline against bundled sample data with neither service.
+
+---
+
+## Quickstart (no Elasticsearch, no Ollama)
+
+Run the full triage pipeline against the 4 bundled Sigma rules and 50 bundled sample auditd events — no services, no network, no secrets:
+
+```bash
+git clone https://github.com/kvmukilan/soc-gpt.git
+cd soc-gpt
+python -m venv .venv
+# Windows (cmd):       .venv\Scripts\activate
+# Windows (Git Bash):  source .venv/Scripts/activate
+# macOS / Linux:       source .venv/bin/activate
+pip install -e ".[dev]"
+
+python -m soc_gpt.demo    # prints a real ATT&CK-mapped triage report
+pytest                    # offline suite: parsing, mapping, scoring, report, agent graph
+```
+
+`python -m soc_gpt.demo` evaluates each rule's generated Elasticsearch query **in process** against the sample events and renders the report through the template fallback, so you get genuine per-rule hit counts and FP scores without Elasticsearch or Ollama running. The live Streamlit UI (see [Full Setup](#full-setup--live-streamlit-ui-windows)) additionally needs Elasticsearch to store and serve logs.
 
 ---
 
@@ -52,7 +75,7 @@ LangGraph agent that ingests Sigma detection rules, queries Elasticsearch for ma
 | Component       | Technology                   | Purpose                                    |
 |-----------------|------------------------------|--------------------------------------------|
 | Orchestration   | LangGraph 0.2+               | Agent state machine with live streaming    |
-| Detection Rules | Sigma YAML + pySigma         | Rule parsing and ES DSL conversion         |
+| Detection Rules | Sigma YAML (lightweight converter) | Rule parsing + ES DSL generation           |
 | Log Store       | Elasticsearch 8.13           | Auditd/syslog event storage and search     |
 | ATT&CK Mapping  | Embedded MITRE DB            | Technique enrichment per rule              |
 | LLM             | Ollama llama3.2:3b (optional)| Analyst triage report synthesis            |
@@ -73,7 +96,9 @@ LangGraph agent that ingests Sigma detection rules, queries Elasticsearch for ma
 
 ---
 
-## Setup (Windows)
+## Full Setup — live Streamlit UI (Windows)
+
+This path runs the live, log-backed Streamlit UI and therefore requires Elasticsearch (Ollama still optional). For a services-free run, use the [Quickstart](#quickstart-no-elasticsearch-no-ollama) above instead.
 
 ### 1. Clone the repo
 
@@ -189,10 +214,10 @@ score = base(level) + delta(status) + volume_delta(hit_count) + time_delta(hour)
 
 | Factor | Values |
 |--------|--------|
-| `base(level)` | critical=1.0 · high=2.5 · medium=5.0 · low=7.5 · info=9.0 |
-| `delta(status)` | stable=−1.0 · test=0.0 · experimental=+2.0 |
-| `volume_delta` | 1–5 hits: 0.0 · 6–50 hits: +1.0 · 50+ hits: +3.0 |
-| `time_delta` | Business hours 08:00–18:00: +0.5 · off-hours: 0.0 |
+| `base(level)` | critical=1.0 · high=2.5 · medium=5.0 · low=7.5 · informational=9.0 |
+| `delta(status)` | stable=−1.0 · test=0.0 · experimental=+2.0 · deprecated=+3.0 |
+| `volume_delta` | 0–5 hits: 0.0 · 6–50 hits: +1.0 · 51+ hits: +3.0 |
+| `time_delta` | Business hours 08:00–18:00 UTC: +0.5 · off-hours: 0.0 |
 
 Labels: **≤ 3.0** → Likely True Positive · **3–6** → Uncertain · **> 6** → Likely False Positive
 
@@ -213,12 +238,15 @@ soc-gpt/
 │   ├── fp_scorer.py          # False-positive scoring formula
 │   ├── llm_client.py         # Ollama client with Markdown template fallback
 │   ├── report_generator.py   # Prompt builder + LLM orchestration
+│   ├── demo.py               # Offline end-to-end demo (no Elasticsearch/Ollama)
 │   ├── agent/
 │   │   ├── state.py          # TriageState TypedDict schema
 │   │   ├── nodes.py          # LangGraph node functions (one per pipeline step)
 │   │   └── graph.py          # StateGraph wiring + conditional edges
 │   └── ui/
 │       └── app.py            # Streamlit 4-page application
+├── tests/                    # Fully offline pytest suite (mocked ES, no network)
+├── .github/workflows/ci.yml  # ruff + pytest on Python 3.10/3.11/3.12
 ├── docker-compose.yml        # Elasticsearch 8.13 + Kibana + Ollama
 ├── Makefile                  # Convenience targets (Windows: use commands directly)
 ├── pyproject.toml
@@ -249,6 +277,18 @@ All in `.env` (copy from `.env.example`):
 
 ---
 
+## Development & CI
+
+```bash
+pip install -e ".[dev]"
+ruff check .     # lint
+pytest           # offline test suite — no Elasticsearch, Ollama, network or secrets
+```
+
+Every push and pull request runs [`ruff` + the offline `pytest` suite](.github/workflows/ci.yml) on Python 3.10, 3.11 and 3.12. The suite mocks the Elasticsearch client, exercises the Ollama-absent template fallback, and covers Sigma ingestion, ATT&CK mapping, FP scoring, report generation and both branches of the agent graph.
+
+---
+
 ## License
 
-MIT — built for portfolio and educational demonstration.
+MIT — see [LICENSE](LICENSE). Built for portfolio and educational demonstration.
