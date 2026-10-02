@@ -1,8 +1,7 @@
 from __future__ import annotations
-import re
+
 import logging
-from pathlib import Path
-import requests
+import re
 
 logger = logging.getLogger(__name__)
 

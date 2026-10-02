@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 from typing import TypedDict
+
 
 class TriageState(TypedDict):
     sigma_rules: list[dict]

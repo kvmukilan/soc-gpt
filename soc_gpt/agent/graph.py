@@ -1,7 +1,10 @@
 from __future__ import annotations
-from langgraph.graph import StateGraph, END
-from soc_gpt.agent.state import TriageState
+
+from langgraph.graph import END, StateGraph
+
 from soc_gpt.agent import nodes
+from soc_gpt.agent.state import TriageState
+
 
 def _has_matches(state: TriageState) -> str:
     total = sum(len(m["hits"]) for m in state.get("raw_matches", []))

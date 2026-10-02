@@ -1,15 +1,18 @@
 from __future__ import annotations
+
 import json
 import logging
+from datetime import datetime, timezone
 from pathlib import Path
+
 import streamlit as st
-import yaml
-from soc_gpt.config import settings
-from soc_gpt.es_client import get_client as get_es
-from soc_gpt.sigma_ingestor import load_rules_from_dir, load_rules_from_content
+
 from soc_gpt.agent.graph import graph
 from soc_gpt.agent.state import TriageState
+from soc_gpt.config import settings
+from soc_gpt.es_client import get_client as get_es
 from soc_gpt.fp_scorer import label as fp_label
+from soc_gpt.sigma_ingestor import load_rules_from_content, load_rules_from_dir
 
 logging.basicConfig(level=logging.INFO)
 
@@ -31,7 +34,7 @@ if "last_triage_time" not in st.session_state:
 
 def page_home():
     st.title("SOC-GPT — AI-Augmented Triage Console")
-    st.caption("LangGraph · Elasticsearch · Ollama · MITRE ATT&CK · pySigma")
+    st.caption("LangGraph · Elasticsearch · Ollama · MITRE ATT&CK · Sigma")
 
     es = get_es()
     col1, col2, col3, col4 = st.columns(4)
@@ -210,8 +213,8 @@ def page_run_triage():
 
             status_box.update(label="✅ Triage complete", state="complete")
 
-        from datetime import datetime
-        st.session_state.last_triage_time = datetime.now().strftime("%H:%M:%S")
+        # SOC dashboards use UTC/Zulu time; also keeps the call timezone-aware.
+        st.session_state.last_triage_time = datetime.now(tz=timezone.utc).strftime("%H:%M:%S UTC")
         st.session_state.last_report = final_state
 
         st.divider()
