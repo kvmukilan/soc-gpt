@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from soc_gpt.fp_scorer import label as fp_label
 from soc_gpt.llm_client import get_client
 

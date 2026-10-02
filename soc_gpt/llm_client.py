@@ -1,6 +1,9 @@
 from __future__ import annotations
+
 import logging
+
 import requests
+
 from soc_gpt.config import settings
 
 logger = logging.getLogger(__name__)
@@ -53,9 +56,10 @@ class OllamaClient:
         if self.is_available():
             try:
                 return self.generate(prompt)
-            except Exception:
-                pass
-        logger.warning("Ollama unavailable — using template fallback")
+            except Exception as exc:
+                logger.warning("Ollama generation failed (%s) — using template fallback", exc)
+        else:
+            logger.info("Ollama unavailable — using template fallback")
         from soc_gpt.fp_scorer import label as fp_label
         return _FALLBACK_TEMPLATE.format(
             title=fallback_context.get("title", "Unknown Rule"),

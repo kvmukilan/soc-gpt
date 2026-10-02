@@ -1,5 +1,6 @@
 from __future__ import annotations
-from datetime import datetime
+
+from datetime import datetime, timezone
 
 _LEVEL_BASE = {
     "critical": 1.0,
@@ -21,16 +22,16 @@ def score(rule: dict, hits: list[dict]) -> float:
     delta = _STATUS_DELTA.get(rule.get("status", "test").lower(), 0.0)
 
     n = len(hits)
-    if n == 0:
-        volume_delta = 0.0
-    elif n <= 5:
+    if n <= 5:  # 0-5 hits (covers the empty case) add nothing
         volume_delta = 0.0
     elif n <= 50:
         volume_delta = 1.0
     else:
         volume_delta = 3.0
 
-    hour = datetime.now().hour
+    # Business-hours bump is evaluated in UTC so the score is deterministic and
+    # timezone-aware (naive datetime.now() is non-reproducible across hosts).
+    hour = datetime.now(tz=timezone.utc).hour
     time_delta = 0.5 if 8 <= hour < 18 else 0.0
 
     raw = base + delta + volume_delta + time_delta

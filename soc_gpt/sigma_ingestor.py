@@ -1,8 +1,9 @@
 from __future__ import annotations
+
 import logging
 from pathlib import Path
+
 import yaml
-from soc_gpt.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,6 @@ def convert_to_es_query(rule: dict, index: str | None = None) -> dict:
     try:
         raw = yaml.safe_load(rule["raw_yaml"])
         detection = raw.get("detection", {})
-        condition = detection.get("condition", "selection")
 
         must_clauses = []
 

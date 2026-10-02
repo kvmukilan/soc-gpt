@@ -24,7 +24,32 @@ dependencies = [
 dev = [
     "pytest>=8.0,<9.0",
     "pytest-asyncio>=0.23,<1.0",
+    "ruff>=0.16,<0.17",
 ]
 
 [tool.setuptools.packages.find]
 include = ["soc_gpt*"]
+
+[tool.ruff]
+target-version = "py310"
+
+[tool.ruff.lint]
+# E4/E7/E9 + F mirror ruff's default; the rest add import hygiene (I), bugbear
+# (B), simplify (SIM), security (S), timezone-safety (DTZ) and misc (PIE) checks
+# that matter for a SOC tool. E5 (line-length) is intentionally off: the embedded
+# ATT&CK technique table has long one-line entries that read best unwrapped.
+select = ["E4", "E7", "E9", "F", "I", "B", "SIM", "S", "DTZ", "PIE"]
+# BLE001: es_client, llm_client and sigma_ingestor deliberately catch broad
+# Exception so the agent degrades gracefully when Elasticsearch/Ollama are
+# unreachable or a rule is malformed — that resilience is the point of the
+# optional-dependency design, so the blind-except rule is disabled by design.
+ignore = ["BLE001"]
+
+[tool.ruff.lint.per-file-ignores]
+# Assertions (S101) are the whole point of a pytest suite.
+"tests/**" = ["S101"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# The suite is fully offline: no Elasticsearch, Ollama, network or secrets.
+addopts = "-ra"

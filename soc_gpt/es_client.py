@@ -1,7 +1,10 @@
 from __future__ import annotations
+
 import logging
 from typing import Any
+
 from elasticsearch import Elasticsearch, helpers
+
 from soc_gpt.config import settings
 
 logger = logging.getLogger(__name__)
