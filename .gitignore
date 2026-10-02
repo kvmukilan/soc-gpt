@@ -10,3 +10,4 @@ data/attack_stix/
 *.db
 tests/
 requirements-dev.txt
+.venv/
