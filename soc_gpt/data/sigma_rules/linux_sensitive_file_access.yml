@@ -1,0 +1,22 @@
+title: Linux Sensitive File Access - Passwd Shadow
+id: a1b2c3d4-0004-0004-0004-000000000004
+status: stable
+description: Detects access to /etc/passwd or /etc/shadow which may indicate credential dumping
+author: SOC-GPT Demo
+date: 2024/01/01
+tags:
+  - attack.credential_access
+  - attack.T1003.008
+logsource:
+  category: file_access
+  product: linux
+detection:
+  selection:
+    filepath|contains:
+      - /etc/passwd
+      - /etc/shadow
+  condition: selection
+level: high
+falsepositives:
+  - System administration
+  - Backup tools

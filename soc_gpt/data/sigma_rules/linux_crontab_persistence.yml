@@ -1,0 +1,23 @@
+title: Linux Crontab Persistence Mechanism
+id: a1b2c3d4-0003-0003-0003-000000000003
+status: test
+description: Detects modification of crontab for persistence establishment
+author: SOC-GPT Demo
+date: 2024/01/01
+tags:
+  - attack.persistence
+  - attack.T1053.003
+logsource:
+  category: process_creation
+  product: linux
+detection:
+  selection:
+    exe|contains:
+      - crontab
+    cmdline|contains:
+      - '-e'
+      - '-l'
+  condition: selection
+level: medium
+falsepositives:
+  - Legitimate cron job management

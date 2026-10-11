@@ -13,7 +13,7 @@ from soc_gpt.fp_scorer import label as fp_label
 
 logging.basicConfig(level=logging.INFO)
 
-DATA_DIR = Path(__file__).parent.parent.parent / "data"
+DATA_DIR = Path(__file__).parent.parent / "data"
 SIGMA_DIR = DATA_DIR / "sigma_rules"
 SAMPLE_LOGS = DATA_DIR / "sample_logs" / "auditd_sample.json"
 
