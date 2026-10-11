@@ -13,7 +13,7 @@ run-ui:
 	streamlit run soc_gpt/ui/app.py
 
 install:
-	pip install -r requirements-dev.txt
+	python -m pip install -e '.[dev]'
 
 test:
 	pytest tests/ -v

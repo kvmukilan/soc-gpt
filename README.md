@@ -252,3 +252,7 @@ All in `.env` (copy from `.env.example`):
 ## License
 
 MIT — built for portfolio and educational demonstration.
+
+## Deployment readiness
+
+See [deployment setup, checks, and rollback](docs/production.md).

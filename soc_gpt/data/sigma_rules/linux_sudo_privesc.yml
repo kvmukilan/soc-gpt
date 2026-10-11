@@ -1,0 +1,26 @@
+title: Linux Sudo Privilege Escalation
+id: a1b2c3d4-0001-0001-0001-000000000001
+status: stable
+description: Detects suspicious sudo usage that may indicate privilege escalation attempts
+author: SOC-GPT Demo
+date: 2024/01/01
+tags:
+  - attack.privilege_escalation
+  - attack.T1548.003
+logsource:
+  category: process_creation
+  product: linux
+detection:
+  selection:
+    exe|contains:
+      - sudo
+      - su
+    cmdline|contains:
+      - '-l'
+      - '-s'
+      - '/bin/bash'
+      - '/bin/sh'
+  condition: selection
+level: high
+falsepositives:
+  - Legitimate administrative activity
