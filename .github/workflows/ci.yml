@@ -53,5 +53,5 @@ jobs:
           docker build -t soc-gpt:ci .
           docker run -d --name soc-gpt-ci -p 127.0.0.1:8501:8501 soc-gpt:ci
           trap 'docker logs soc-gpt-ci; docker rm -f soc-gpt-ci' EXIT
-          curl --fail --retry 20 --retry-connrefused --retry-delay 2 http://127.0.0.1:8501/_stcore/health
+          curl --fail --retry 20 --retry-all-errors --retry-delay 2 --retry-max-time 60 --max-time 5 http://127.0.0.1:8501/_stcore/health
           test "$(docker exec soc-gpt-ci id -u)" = 10001
